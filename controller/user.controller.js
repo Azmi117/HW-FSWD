@@ -2,6 +2,7 @@ const db = require('../models');
 const send = require('send');
 const User = db.User
 const bcrypt = require('bcrypt')
+const userService = require('../service/user');
 
 class UserController {
     static getAllUsers = async (req, res, next) => {
@@ -33,13 +34,46 @@ class UserController {
     }
     static createUser = async (req, res, next) => {
         const { email, gender, password, role } = req.body
-        const hashedPassword = bcrypt.hashSync(password, 8)
+        
+        try{
 
-        const data = await User.create({
-            email, gender, password: hashedPassword, role
+        const data = await userService.createUser({
+            email,
+            gender,
+            password,
+            role
         })
 
         res.status(201).json(data);
+        } catch(err){
+            next(err)
+        }
+    }
+
+    static async upload(req, res, next){
+        try{
+            const { id } = req.params;
+            const file = req.file
+
+            const user = await User.findByPk(id)
+
+            if(!user) {
+                res.status(400).json({message: `no user with id = ${id} found`})
+            }
+            if(!file) {
+                res.status(400).json({message: 'no image detected'})
+            }
+            
+            const new_image_url = `http://localhost:4000/upload/${file.filename}`
+            user.update({
+                image_url: new_image_url
+            })
+
+            res.status(201).json({message: 'success updating profile picture'});
+        }catch(err){
+            next(err);
+        }
+        
     }
 
     static login = async (req, res, next) => {
